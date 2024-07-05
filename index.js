@@ -24,8 +24,6 @@ app.post('/runCode',async (req,res)=>{
     const lang = req.body.lang;
     const input = req.body.input;
 
-    console.log(__dirname);
-
     const folderPath = path.join(__dirname, `./${lang}/run/`);
 
     await deleteFolder(folderPath+`${userId}`);
@@ -71,6 +69,11 @@ app.post('/submitCode',async (req,res)=>{
     const problemId = req.body.problemId;
     const ssid = req.body.ssid;
     const csrf = req.body.csrf;
+
+    if(ssid==null || csrf==null){
+        await sendResp(res,"SSID or CSRF cannot be null","OK",200);
+        return;
+    }
 
     const folderPath = path.join(__dirname, `./${lang}/submit/`);
 
