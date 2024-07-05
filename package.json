@@ -1,0 +1,25 @@
+{
+  "name": "codejudge",
+  "version": "1.0.0",
+  "description": "code runner",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Rohith.Yelagam",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "child_process": "^1.0.2",
+    "express": "^4.19.2",
+    "fs-extra": "^11.2.0",
+    "path": "^0.12.7",
+    "unzipper": "^0.12.1",
+    "util": "^0.12.5"
+  },
+  "homepage": ".",
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
