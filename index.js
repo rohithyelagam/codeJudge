@@ -24,6 +24,8 @@ app.post('/runCode',async (req,res)=>{
     const lang = req.body.lang;
     const input = req.body.input;
 
+    console.log(__dirname);
+
     const folderPath = path.join(__dirname, `./${lang}/run/`);
 
     await deleteFolder(folderPath+`${userId}`);
