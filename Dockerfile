@@ -18,7 +18,7 @@ RUN apt-get update && \
     apt-get install -y build-essential
 
 # Expose the port your app runs on
-EXPOSE 3000
+EXPOSE 80
 
 # Command to run your app
 CMD ["npm", "start"]
