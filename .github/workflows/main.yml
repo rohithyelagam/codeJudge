@@ -28,20 +28,20 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/code-judge:latest
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Deploy to AWS EC2
-        uses: appleboy/ssh-action@v0.1.1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/code-judge:latest
-            docker stop code-judge || true
-            docker rm code-judge || true
-            docker run -d --name code-judge -p 3000:3000 ${{ secrets.DOCKERHUB_USERNAME }}/code-judge:latest
+  #   steps:
+  #     - name: Deploy to AWS EC2
+  #       uses: appleboy/ssh-action@v0.1.1
+  #       with:
+  #         host: ${{ secrets.EC2_HOST }}
+  #         username: ${{ secrets.EC2_USER }}
+  #         key: ${{ secrets.EC2_SSH_KEY }}
+  #         port: 22
+  #         script: |
+  #           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/code-judge:latest
+  #           docker stop code-judge || true
+  #           docker rm code-judge || true
+  #           docker run -d --name code-judge -p 3000:3000 ${{ secrets.DOCKERHUB_USERNAME }}/code-judge:latest

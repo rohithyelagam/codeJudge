@@ -19,6 +19,8 @@ app.post('/runCode',async (req,res)=>{
 
     var result = '';
 
+    console.log("request body : "+JSON.stringify(req.body));
+
     const userId = req.body.userId;
     const code = req.body.code;
     const lang = req.body.lang;
@@ -26,20 +28,31 @@ app.post('/runCode',async (req,res)=>{
 
     const folderPath = path.join(__dirname, `./${lang}/run/`);
 
+    console.log("file path : "+folderPath);
+
     await deleteFolder(folderPath+`${userId}`);
 
     await createFolder(folderPath+`${userId}`);
 
+    console.log("file path : "+folderPath+`${userId}`);
+
     await createFolder(folderPath+`${userId}/inputs`);
+
+    console.log("file path : "+folderPath+`${userId}/inputs`);
 
     await createFile(folderPath+`${userId}/main${getCodeExtension(lang)}`,code);
 
+    console.log("file path : "+folderPath+`${userId}/main${getCodeExtension(lang)}`);
+
     await createFile(folderPath+`${userId}/inputs/input.in`,input);
+
+    console.log("file path : "+folderPath+`${userId}/inputs/input.in`);
 
     const codePath = `${lang}/run/${userId}/`;
 
     try{
         await exec(`g++ -o ${codePath}myapp ${codePath}main${getCodeExtension(lang)}`);
+        console.log("compiling done");
     }catch(err){
         console.log("error during compilation");
         await deleteFolder(folderPath+`${userId}`);
@@ -49,14 +62,13 @@ app.post('/runCode',async (req,res)=>{
 
     try{
         result = (await exec(`${codePath}myapp <${codePath}inputs/input.in`)).stdout;
+        console.log("runtime done");
     }catch(err){
         console.log("error during runtime");
         await deleteFolder(folderPath+`${userId}`);
         sendResp(res,err.stderr,"ok",200);
         return;
     }
-
-    await deleteFolder(folderPath+`${userId}`);
     await sendResp(res,result,"ok",200);
 
 })
