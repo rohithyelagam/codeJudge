@@ -28,25 +28,15 @@ app.post('/runCode',async (req,res)=>{
 
     const folderPath = path.join(__dirname, `./${lang}/run/`);
 
-    console.log("file path : "+folderPath);
-
     await deleteFolder(folderPath+`${userId}`);
 
     await createFolder(folderPath+`${userId}`);
 
-    console.log("file path : "+folderPath+`${userId}`);
-
     await createFolder(folderPath+`${userId}/inputs`);
-
-    console.log("file path : "+folderPath+`${userId}/inputs`);
 
     await createFile(folderPath+`${userId}/main${getCodeExtension(lang)}`,code);
 
-    console.log("file path : "+folderPath+`${userId}/main${getCodeExtension(lang)}`);
-
     await createFile(folderPath+`${userId}/inputs/input.in`,input);
-
-    console.log("file path : "+folderPath+`${userId}/inputs/input.in`);
 
     const codePath = `${lang}/run/${userId}/`;
 
@@ -272,7 +262,7 @@ const removeTrailingSpaces = (filePath) => {
     });
 }
 
-app.listen(80,()=>{
-    console.log("CODE RUNNER IS RUNNING at 80");
+app.listen(3000,()=>{
+    console.log("CODE RUNNER IS RUNNING at 3000");
 })
 
