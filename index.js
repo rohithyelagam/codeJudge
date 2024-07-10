@@ -41,12 +41,11 @@ app.post('/runCode',async (req,res)=>{
     {
         const { stdout, stderr } = await exec(`g++ -o ${codePath}myapp ${codePath}main${getCodeExtension(lang)}; echo $?`);
 
-        console.log(JSON.stringify(stdout),JSON.stringify(stderr));
-
         [result, statusCode] = await getCode(stdout);
 
         if(statusCode == "1"){
             await sendResp(res,stderr,"CMP_ERR",200);
+            await deleteFolder(folderPath+`${userId}`);
             return;
         }
     }
@@ -54,10 +53,7 @@ app.post('/runCode',async (req,res)=>{
     {
         const { stdout, stderr } = (await exec(`timeout 2 ${codePath}myapp < ${codePath}inputs/input.in; echo $?`));
 
-        console.log(JSON.stringify(stdout),JSON.stringify(stderr));
-
         [result, statusCode] = await getCode(stdout);
-        console.log(result,statusCode);
 
         if(statusCode == "136"){
             await sendResp(res,stderr,"RUN_ERR",200);
@@ -83,7 +79,7 @@ app.post('/submitCode',async (req,res)=>{
     const csrf = req.body.csrf;
 
     if(ssid==null || csrf==null){
-        await sendResp(res,"SSID or CSRF cannot be null","OK",200);
+        await sendResp(res,"SSID or CSRF cannot be null","INVALID_REQ",200);
         return;
     }
 
@@ -101,13 +97,16 @@ app.post('/submitCode',async (req,res)=>{
 
     await createFile(folderPath+`${userId}/main${getCodeExtension(lang)}`,code);
 
-    try{
-        await exec(`g++ -o ${lang}/submit/${userId}/myapp ${lang}/submit/${userId}/main.cpp`);
-    }catch(err){
-        console.log("error during compilation");
-        await deleteFolder(folderPath+`${userId}`);
-        sendResp(res,err.stderr,"ok",200);
-        return;
+    {
+        const {stdout,stderr} = await exec(`g++ -o ${lang}/submit/${userId}/myapp ${lang}/submit/${userId}/main.cpp; echo $?`);
+
+        [result, statusCode] = await getCode(stdout);
+
+        if(statusCode == "1"){
+            await sendResp(res,stderr,"CMP_ERR",200);
+            await deleteFolder(folderPath+`${userId}`);
+            return;
+        }
     }
 
     const len = await addTestCase(problemId,ssid,csrf,folderPath+`${userId}`);
@@ -116,25 +115,43 @@ app.post('/submitCode',async (req,res)=>{
         await removeTrailingSpaces(folderPath+`${userId}/outputs/${i}.out`);
     }
 
-    try{
+    {
         for(var idx=1;idx<=len;idx++){
-            result = await exec(`timeout 1 ${lang}/submit/${userId}/myapp <${lang}/submit/${userId}/inputs/${idx}.in> ${lang}/submit/${userId}/tests/${idx}.out || echo "TLE"`);
-            console.log("TestCase "+idx,result);
-            if(result.stdout!=undefined && result.stdout == "TLE\n"){
-                break;
+
+            const {stdout,stderr} = await exec(`timeout 1 ${lang}/submit/${userId}/myapp <${lang}/submit/${userId}/inputs/${idx}.in> ${lang}/submit/${userId}/tests/${idx}.out; echo $?`);
+
+            [result, statusCode] = await getCode(stdout);
+
+            if(statusCode == "124"){
+                await sendResp(res,"Time Limit Exceeded at Testcase : "+idx,"TLE_ERR",200);
+                await deleteFolder(folderPath+`${userId}`);
+                return;
+            }else if(statusCode == "136"){
+                await sendResp(res,`Runtime Error at Testcase : ${idx}.\n Message : ${stderr}`,"RUN_ERR",200);
+                await deleteFolder(folderPath+`${userId}`);
+                return;
             }
+
             await removeTrailingSpaces(`${lang}/submit/${userId}/tests/${idx}.out`);
-            await exec(`cmp ${lang}/submit/${userId}/tests/${idx}.out ${lang}/submit/${userId}/outputs/${idx}.out`);
+
+            {
+            const {stdout,stderr} = await exec(`cmp ${lang}/submit/${userId}/tests/${idx}.out ${lang}/submit/${userId}/outputs/${idx}.out; echo $?`);
+
+            [result, statusCode] = await getCode(stdout);
+
+                if(statusCode == "1"){
+                    await sendResp(res,`Worng Output at Testcase : ${idx}`,"WA_ERR",200);
+                    await deleteFolder(folderPath+`${userId}`);
+                    return;
+                }
+            }
+
         }
-    }catch(err){
-        console.log("error during runtime : ",err);
-        await deleteFolder(folderPath+`${userId}`);
-        sendResp(res,err,"ok",200);
-        return;
     }
 
     await deleteFolder(folderPath+`${userId}`);
-    await sendResp(res,(result.stdout!=undefined && result.stdout == "TLE\n")?"Time Limit Exceeded":"ACCEPTED","OK",200);
+    await sendResp(res,"ACCEPTED","AC",200);
+
 })
 
 const getCode = (msg)=>{
@@ -220,8 +237,6 @@ const addTestCase = (problem,ssid,csrf,folderPath)=>{
     return new Promise(async (resolve,reject)=>{
 
         var len = 0;
-
-        console.log("SSID : "+ssid,"CSRF : "+csrf);
 
         const response = await axios({
             method: 'post',
