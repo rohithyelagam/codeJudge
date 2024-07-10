@@ -17,9 +17,8 @@ app.use(urlencoded({ extended: true }));
 
 app.post('/runCode',async (req,res)=>{
 
-    var result = '';
-
-    console.log("request body : "+JSON.stringify(req.body));
+    var result;
+    var statusCode; 
 
     const userId = req.body.userId;
     const code = req.body.code;
@@ -39,31 +38,42 @@ app.post('/runCode',async (req,res)=>{
     await createFile(folderPath+`${userId}/inputs/input.in`,input);
 
     const codePath = `${lang}/run/${userId}/`;
+    {
+        const { stdout, stderr } = await exec(`g++ -o ${codePath}myapp ${codePath}main${getCodeExtension(lang)}; echo $?`);
 
-    try{
-        await exec(`g++ -o ${codePath}myapp ${codePath}main${getCodeExtension(lang)}`);
-        console.log("compiling done");
-    }catch(err){
-        console.log("error during compilation");
-        await deleteFolder(folderPath+`${userId}`);
-        sendResp(res,err.stderr,"ok",200);
-        return;
+        console.log(JSON.stringify(stdout),JSON.stringify(stderr));
+
+        [result, statusCode] = await getCode(stdout);
+
+        if(statusCode == "1"){
+            await sendResp(res,stderr,"CMP_ERR",200);
+            return;
+        }
     }
 
-    try{
-        result = (await exec(`${codePath}myapp <${codePath}inputs/input.in`)).stdout;
-        console.log("runtime done");
-    }catch(err){
-        console.log("error during runtime");
-        await deleteFolder(folderPath+`${userId}`);
-        sendResp(res,err.stderr,"ok",200);
-        return;
-    }
-    await sendResp(res,result,"ok",200);
+    {
+        const { stdout, stderr } = (await exec(`timeout 2 ${codePath}myapp < ${codePath}inputs/input.in; echo $?`));
 
+        console.log(JSON.stringify(stdout),JSON.stringify(stderr));
+
+        [result, statusCode] = await getCode(stdout);
+        console.log(result,statusCode);
+
+        if(statusCode == "136"){
+            await sendResp(res,stderr,"RUN_ERR",200);
+        }else if(statusCode == "124"){
+            await sendResp(res,"Time Limit Exceeded","TLE_ERR",200);
+        }else{
+            await sendResp(res,result,"OK",200);
+        }
+    }
+
+    await deleteFolder(folderPath+`${userId}`);
 })
 
 app.post('/submitCode',async (req,res)=>{
+
+    var result="";
 
     const userId = req.body.userId;
     const code = req.body.code;
@@ -108,8 +118,11 @@ app.post('/submitCode',async (req,res)=>{
 
     try{
         for(var idx=1;idx<=len;idx++){
-            await exec(`${lang}/submit/${userId}/myapp <${lang}/submit/${userId}/inputs/${idx}.in> ${lang}/submit/${userId}/tests/${idx}.out`);
-            console.log("TestCase "+idx);
+            result = await exec(`timeout 1 ${lang}/submit/${userId}/myapp <${lang}/submit/${userId}/inputs/${idx}.in> ${lang}/submit/${userId}/tests/${idx}.out || echo "TLE"`);
+            console.log("TestCase "+idx,result);
+            if(result.stdout!=undefined && result.stdout == "TLE\n"){
+                break;
+            }
             await removeTrailingSpaces(`${lang}/submit/${userId}/tests/${idx}.out`);
             await exec(`cmp ${lang}/submit/${userId}/tests/${idx}.out ${lang}/submit/${userId}/outputs/${idx}.out`);
         }
@@ -121,8 +134,25 @@ app.post('/submitCode',async (req,res)=>{
     }
 
     await deleteFolder(folderPath+`${userId}`);
-    await sendResp(res,"ACCEPTED","OK",200);
+    await sendResp(res,(result.stdout!=undefined && result.stdout == "TLE\n")?"Time Limit Exceeded":"ACCEPTED","OK",200);
 })
+
+const getCode = (msg)=>{
+    return new Promise((resolve)=>{
+        var code="";
+        var res="";
+        var x = msg.length-2,y=0;
+        while(x>=0 && msg[x]!='\n'){
+            code = msg[x]+code;
+            x--;
+        }
+        while(y<=x){
+            res+=msg[y];
+            y++;
+        }
+        resolve([res,code]);
+    })
+}
 
 const deleteFolder = (path)=>{
     return new Promise((resolve,reject)=>{
@@ -179,8 +209,8 @@ const getCodeExtension = (lang)=>{
 
 const sendResp = async (resp, message,status,code)=>{
     const data = {
-        message:message,
-        status:status
+        output:message,
+        code:status
     }
     await resp.status(code).send(data);
 }
