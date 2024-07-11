@@ -17,6 +17,8 @@ app.use(urlencoded({ extended: true }));
 
 app.post('/runCode',async (req,res)=>{
 
+    try{
+
     var result;
     var statusCode; 
 
@@ -65,9 +67,15 @@ app.post('/runCode',async (req,res)=>{
     }
 
     await deleteFolder(folderPath+`${userId}`);
+
+    }catch(err){
+        sendResp(res,err.message,"INTERNAL_ERR",500);
+    }
 })
 
 app.post('/submitCode',async (req,res)=>{
+
+    try{
 
     var result="";
 
@@ -151,6 +159,10 @@ app.post('/submitCode',async (req,res)=>{
 
     await deleteFolder(folderPath+`${userId}`);
     await sendResp(res,"ACCEPTED","AC",200);
+
+    }catch(err){
+        sendResp(res,err.message,"INTERNAL_ERR",500);
+    }
 
 })
 
