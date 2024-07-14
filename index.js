@@ -29,7 +29,9 @@ app.post('/runCode',async (req,res)=>{
 
     const folderPath = path.join(__dirname, `./${lang}/run/`);
 
-    await deleteFolder(folderPath+`${userId}`);
+    if(checkPath(folderPath+`${userId}`)){
+        await deleteFolder(folderPath+`${userId}`);
+    }
 
     await createFolder(folderPath+`${userId}`);
 
@@ -47,7 +49,9 @@ app.post('/runCode',async (req,res)=>{
 
         if(statusCode == "1"){
             await sendResp(res,stderr,"CMP_ERR",200);
-            await deleteFolder(folderPath+`${userId}`);
+            if(checkPath(folderPath+`${userId}`)){
+                await deleteFolder(folderPath+`${userId}`);
+            }
             return;
         }
     }
@@ -66,7 +70,9 @@ app.post('/runCode',async (req,res)=>{
         }
     }
 
-    await deleteFolder(folderPath+`${userId}`);
+    if(checkPath(folderPath+`${userId}`)){
+        await deleteFolder(folderPath+`${userId}`);
+    }
 
     }catch(err){
         sendResp(res,err.message,"INTERNAL_ERR",500);
@@ -76,8 +82,6 @@ app.post('/runCode',async (req,res)=>{
 app.post('/submitCode',async (req,res)=>{
 
     try{
-
-    var result="";
 
     const userId = req.body.userId;
     const code = req.body.code;
@@ -93,7 +97,9 @@ app.post('/submitCode',async (req,res)=>{
 
     const folderPath = path.join(__dirname, `./${lang}/submit/`);
 
-    await deleteFolder(folderPath+`${userId}`);
+    if(checkPath(folderPath+`${userId}`)){
+        await deleteFolder(folderPath+`${userId}`);
+    }
 
     await createFolder(folderPath+`${userId}`);
 
@@ -112,7 +118,9 @@ app.post('/submitCode',async (req,res)=>{
 
         if(statusCode == "1"){
             await sendResp(res,stderr,"CMP_ERR",200);
-            await deleteFolder(folderPath+`${userId}`);
+            if(checkPath(folderPath+`${userId}`)){
+                await deleteFolder(folderPath+`${userId}`);
+            }
             return;
         }
     }
@@ -165,6 +173,18 @@ app.post('/submitCode',async (req,res)=>{
     }
 
 })
+
+const checkPath = async (a)=>{
+
+    var result, statusCode;
+    const { stdout, stderr } = await exec(`ls ${a}; echo $?`);
+    [result, statusCode] = await getCode(stdout);
+
+    if(statusCode == 0 || statusCode=="0"){
+        return true;
+    }
+    return false;
+}
 
 const getCode = (msg)=>{
     return new Promise((resolve)=>{
@@ -306,7 +326,6 @@ const removeTrailingSpaces = (filePath) => {
 
         rl.on('close', () => {
             outputStream.end(() => {
-                // Replace the original file with the temporary file
                 fs.rename(tempFilePath, filePath, (err) => {
                     if (err) {
                         reject(err);
